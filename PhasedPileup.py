@@ -3,6 +3,7 @@ from sys import argv
 from collections import defaultdict
 from os import path
 import svgwrite as svg
+from argparse import ArgumentParser
 
 def get_phase(read, snps):
     phase = None
@@ -154,25 +155,69 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
 
 
 
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument('snp_file')
+    parser.add_argument('samfile')
+    parser.add_argument('--gene-name', '-g', default=None)
+    parser.add_argument('--gtf-file', '-G', default=None)
+    parser.add_argument('--coords', '-c', default=None)
+    parser.add_argument('--chrom', '-C', default=None)
+    args = parser.parse_args()
+
+    if args.coords is not None:
+        args.chrom, coords = args.coords.split(':')
+        sep = '-' if '-' in coords else '..'
+        coords = coords.replace(',', '').split(sep)
+
+        args.coords = int(coords[0]), int(coords[-1])
+    elif args.gene_name is not None:
+        min_coord = 1e99
+        max_coord = -1
+        if args.gtf_file is None:
+            args.gtf_file = 'mel_good.gtf'
+
+        for row in open(args.gtf_file):
+            row = row.split('\t')
+            if '"{}"'.format(args.gene_name) in row[-1]:
+                min_coord = min(min_coord, int(row[3]))
+                max_coord = max(max_coord, int(row[4]))
+                args.chrom = row[0]
+
+        if max_coord <= min_coord:
+            print('Could not find gene: {} '.format(args.gene_name))
+            assert False
+        args.coords = min_coord, max_coord
+    return args
+
+
+
+    return args
+
+
+
+
 if __name__ == "__main__":
+    args = parse_args()
     phase_pos = []
     phase_neg = []
     phase_unk  = []
 
     # Note that phases are 0, 1, and -1
     phase_all = [phase_unk, phase_pos, phase_neg]
-    snps = get_snps(argv[1])
+    snps = get_snps(args.snp_file)
 
     start_coord = 1e99
 
     unmatched_reads = [{}, {}]
     # Note that in order to keep track of the un-phased reads, we need to do a
     # 2-pass approach to know the height of all of the classes
-    gene_chrom = 'dmel_2L'
-    gene_coords = (8258373,8301079)
+    gene_chrom = args.chrom
+    gene_coords = args.coords
     num_reads = 0
-    for read in (Samfile(argv[2])
-                 .fetch(gene_chrom, gene_coords[0], gene_coords[1])):
+    for read in (Samfile(args.samfile).fetch(gene_chrom,
+                                             gene_coords[0],
+                                             gene_coords[1])):
         if (not ((gene_coords[0] <= read.reference_start <= gene_coords[1])
                  and (gene_coords[0] <= read.reference_end <= gene_coords[1]))):
             continue
@@ -221,7 +266,11 @@ if __name__ == "__main__":
     max_depth_neg = len(phase_neg)
     max_depth_unk = len(phase_unk)
 
-    dwg = svg.Drawing(argv[2].replace('.bam', '_phased.svg'))
+    out_fname = args.samfile.replace('.bam', '_phased.svg')
+    if args.gene_name:
+        out_fname = args.gene_name + '_' + out_fname
+    dwg = svg.Drawing(out_fname,
+                     )
 
     y_start = 10 + max_depth_neg * 1.2*read_height
 
