@@ -73,6 +73,8 @@ def insert_reads(read1, read2, reads_by_phase):
             break
     else:
         reads_by_phase.append([read1])
+        if read2 is not None:
+            reads_by_phase[-1].append(read2)
 
 def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
               with_snps_only=False, last_read=None):
