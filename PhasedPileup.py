@@ -91,11 +91,22 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
             snp_locs.append((read_pos, ref_pos))
     if with_snps_only and len(snp_locs) == 0:
         return
+    g = dwg.g()
+    g.add(svg.base.Title("{}: {} - {} - {}".format(
+        read.qname,
+        read.blocks,
+        read.mpos if read.is_proper_pair else "",
+        "({})".format(last_read.blocks) 
+        if ((last_read is not None) and (last_read.qname == read.qname))
+        else ""
+        )
+        )
+        )
     if read.is_reverse:
         slice_start += 1
         block_start, block_end = blocks[0]
         last_stop = block_end
-        dwg.add(dwg.polygon(
+        g.add(dwg.polygon(
             [(x_scale * (block_start - x_start_coord), y_coord + read_height/2),
              (x_scale * (min(block_start+read_height/2, block_end) - x_start_coord), y_coord+read_height),
              (x_scale * (block_end - x_start_coord), y_coord+read_height),
@@ -103,13 +114,13 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
              (x_scale * (min(block_start+read_height/2, block_end) - x_start_coord), y_coord),
              (x_scale * (block_start - x_start_coord), y_coord+read_height/2)
             ],
-            style='stroke-width=0;fill:{}'.format(phase_color),
+            style='fill:{}'.format(phase_color),
             id=read.qname,
         ))
     else:
         slice_end -= 1
         block_start, block_end = blocks[-1]
-        dwg.add(dwg.polygon(
+        g.add(dwg.polygon(
             [
                 (x_scale * (block_start - x_start_coord), y_coord + read_height),
                 (x_scale * (max(block_start, block_end - read_height/2) - x_start_coord), y_coord+read_height),
@@ -118,24 +129,24 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
                 (x_scale * (block_start - x_start_coord), y_coord),
                 (x_scale * (block_start - x_start_coord), y_coord+read_height),
             ],
-            style='stroke-width=0;fill:{};'.format(phase_color),
+            style='fill:{};'.format(phase_color),
         ))
         last_stop = block_start
 
     for i in range(slice_start, slice_end):
         block_start, block_stop = blocks[i]
-        dwg.add(dwg.line((x_scale*(last_stop - x_start_coord),
+        g.add(dwg.line((x_scale*(last_stop - x_start_coord),
                           y_coord + 0.5 * read_height),
                          (x_scale*(block_start-x_start_coord),
                           y_coord + 0.5 * read_height),
                          style='stroke-width=2;stroke:{};'.format(phase_color),
                          id=read.qname,
                         ))
-        dwg.add(dwg.rect((x_scale*(block_start - x_start_coord),
+        g.add(dwg.rect((x_scale*(block_start - x_start_coord),
                           y_coord),
                          (x_scale*(block_stop - block_start),
                           read_height),
-                         style='stroke-width=0;fill:{};'.format(phase_color),
+                         style='fill:{};'.format(phase_color),
                          id=read.qname,
                         ))
         last_stop = block_stop
@@ -144,21 +155,24 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
             alleles = snps[ref_pos + 1]
             if read.seq[read_pos] in alleles:
                 snp_color = [neg_color, pos_color][alleles.index(read.seq[read_pos])]
+                if snp_color == phase_color:
+                    snp_color = 'black'
             else:
                 snp_color = 'black'
-            dwg.add(dwg.line(
+            g.add(dwg.line(
                 (x_scale * (ref_pos - x_start_coord), y_coord),
                 (x_scale * (ref_pos - x_start_coord), y_coord + read_height),
                 style='stroke-width:1; stroke:{};'.format(snp_color),
             ))
 
     if last_read is not None and read.qname == last_read.qname:
-        dwg.add(dwg.line((x_scale * (last_read.reference_end - x_start_coord),
+        g.add(dwg.line((x_scale * (last_read.reference_end - x_start_coord),
                           y_coord + read_height/2),
                          (x_scale * (read.reference_start - x_start_coord),
                           y_coord + read_height/2),
                          style='stroke-width:1;stroke:black;',
                         ))
+    dwg.add(g)
 
 
 
@@ -215,6 +229,7 @@ if __name__ == "__main__":
     snps = get_snps(args.snp_file)
 
     start_coord = 1e99
+    end_coord = 0
 
     unmatched_reads = [{}, {}]
     # Note that in order to keep track of the un-phased reads, we need to do a
@@ -257,6 +272,7 @@ if __name__ == "__main__":
             continue
 
         start_coord = min(start_coord, read.reference_start)
+        end_coord = max(end_coord, read.reference_end)
 
     for reads in unmatched_reads:
         for qname in reads:
@@ -275,8 +291,14 @@ if __name__ == "__main__":
 
     out_fname = args.samfile.replace('.bam', '_phased.svg')
     if args.gene_name:
-        out_fname = args.gene_name + '_' + out_fname
+        out_fname = path.join(path.dirname(out_fname), 
+                args.gene_name + '_' + path.basename(out_fname))
     dwg = svg.Drawing(out_fname,
+                      (x_scale*(end_coord - start_coord),
+                       read_height * 1.2 * (max_depth_pos +
+                                             max_depth_neg +
+                                             max_depth_unk +  6)),
+                      profile='full',
                      )
 
     y_start = 10 + max_depth_neg * 1.2*read_height
@@ -289,6 +311,7 @@ if __name__ == "__main__":
             draw_read(read, dwg,
                       start_coord, y_start - row_num * 1.2 * read_height,
                       neg_color,
+                      snps=snps[gene_chrom],
                       last_read = last_read
                      )
             last_read = read
@@ -310,6 +333,7 @@ if __name__ == "__main__":
             draw_read(read, dwg,
                       start_coord, y_start + row_num * 1.2 * read_height,
                       pos_color,
+                      snps=snps[gene_chrom],
                       last_read = last_read
                      )
             last_read = read
