@@ -4,6 +4,7 @@ from collections import defaultdict
 from os import path
 import svgwrite as svg
 from argparse import ArgumentParser
+import pickle as pkl
 
 def get_phase(read, snps):
     phase = None
@@ -34,12 +35,16 @@ def get_snps(snpfile):
                     }
     else:
         true_hets = defaultdict(lambda x: True)
+    if path.exists(snpfile+'.pkl'):
+        return pkl.load(open(snpfile+'.pkl', 'rb'))
+
     if snpfile.endswith('.bed'):
         for line in open(snpfile):
             chrom, _, start, refalt = line.strip().split()
             if true_hets.get((chrom, start), True):
                 snps[chrom][int(start)] = refalt.split('|')
 
+    pkl.dump(snps, open(snpfile+'.pkl', 'wb'))
     return snps
 
 read_height = 3
