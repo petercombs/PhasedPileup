@@ -184,6 +184,7 @@ def parse_args():
     parser.add_argument('--gtf-file', '-G', default=None)
     parser.add_argument('--coords', '-c', default=None)
     parser.add_argument('--chrom', '-C', default=None)
+    parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.coords is not None:
@@ -198,24 +199,40 @@ def parse_args():
         if args.gtf_file is None:
             args.gtf_file = 'mel_good.gtf'
 
+        exons = set()
         for row in open(args.gtf_file):
             row = row.split('\t')
             if '"{}"'.format(args.gene_name) in row[-1]:
                 min_coord = min(min_coord, int(row[3]))
                 max_coord = max(max_coord, int(row[4]))
                 args.chrom = row[0]
+                exons.add((int(row[3]), int(row[4])))
 
         if max_coord <= min_coord:
             print('Could not find gene: {} '.format(args.gene_name))
             assert False
+        args.draw_exons = exons
         args.coords = min_coord, max_coord
     return args
 
 
-
-    return args
-
-
+def draw_exons(dwg, exons, x_start, y_start):
+    for left, right in exons:
+        dwg.add(dwg.rect(
+            (x_scale * (left - x_start), y_start),
+            (x_scale * (right - left), read_height),
+            style='opacity:1; fill: orange;',
+                ))
+        g = dwg.g()
+        g.attribs['class'] = 'hover_group'
+        g.add(dwg.line((x_scale * (left-x_start), 0), (x_scale * (left-x_start), y_start)))
+        g.add(dwg.line((x_scale * (right-x_start), 0), (x_scale * (right - x_start), y_start)))
+        g.add(dwg.rect(
+            (x_scale * (left - x_start), y_start),
+            (x_scale * (right - left), read_height),
+            style='opacity:1; fill: orange;',
+            ))
+        dwg.add(g)
 
 
 if __name__ == "__main__":
@@ -297,9 +314,12 @@ if __name__ == "__main__":
                       (x_scale*(end_coord - start_coord),
                        read_height * 1.2 * (max_depth_pos +
                                              max_depth_neg +
-                                             max_depth_unk +  6)),
+                                             max_depth_unk +  15)),
                       profile='full',
-                     )
+                      )
+    dwg.add(dwg.style(
+        '.hover_group{opacity:0;} \n.hover_group:hover \n{\n\topacity:1;\n\tstroke-width:1!important;\n\tstroke:#000000;\n}'
+        ))
 
     y_start = 10 + max_depth_neg * 1.2*read_height
 
@@ -337,7 +357,10 @@ if __name__ == "__main__":
                       last_read = last_read
                      )
             last_read = read
+    y_start += max_depth_pos * 1.2 * read_height + 3 * read_height
 
+    if args.draw_exons:
+        draw_exons(dwg, args.draw_exons, start_coord, y_start)
     dwg.save()
 
 
