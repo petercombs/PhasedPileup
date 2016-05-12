@@ -310,6 +310,8 @@ if __name__ == "__main__":
     if args.gene_name:
         out_fname = path.join(path.dirname(out_fname), 
                 args.gene_name + '_' + path.basename(out_fname))
+    start_coord -= 10
+    end_coord += 10
     dwg = svg.Drawing(out_fname,
                       (x_scale*(end_coord - start_coord),
                        read_height * 1.2 * (max_depth_pos +
