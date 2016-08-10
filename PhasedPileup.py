@@ -1,5 +1,4 @@
 from pysam import Samfile
-from sys import argv
 from collections import defaultdict
 from os import path
 import svgwrite as svg
@@ -186,6 +185,8 @@ def parse_args():
                         help="Format: chrom:10..100 or chrom:10-100")
     parser.add_argument('--chrom', '-C', default=None)
     parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
+    parser.add_argument('--skip-if-deep', '-d', default=False,
+                        action='store_true')
     args = parser.parse_args()
 
     if args.coords is not None:
@@ -328,6 +329,9 @@ if __name__ == "__main__":
 
     last_read = None
     for row_num, row in enumerate(phase_neg):
+        if args.skip_if_deep and row_num == (max_rows+1):
+            print("bailing")
+            continue
         for read in row:
             if read is None:
                 continue
@@ -341,6 +345,8 @@ if __name__ == "__main__":
 
     y_start += 3 * read_height
     for row_num, row in enumerate(phase_unk):
+        if args.skip_if_deep and row_num == (max_rows+1):
+            continue
         for read in row:
             draw_read(read, dwg,
                       start_coord, y_start + row_num * 1.2 * read_height,
@@ -352,6 +358,8 @@ if __name__ == "__main__":
     y_start += max_depth_unk * 1.2 * read_height + 3 * read_height
 
     for row_num, row in enumerate(phase_pos):
+        if args.skip_if_deep and row_num == (max_rows+1):
+            continue
         for read in row:
             draw_read(read, dwg,
                       start_coord, y_start + row_num * 1.2 * read_height,
