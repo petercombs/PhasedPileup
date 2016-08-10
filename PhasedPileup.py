@@ -182,7 +182,8 @@ def parse_args():
     parser.add_argument('samfile')
     parser.add_argument('--gene-name', '-g', default=None)
     parser.add_argument('--gtf-file', '-G', default=None)
-    parser.add_argument('--coords', '-c', default=None)
+    parser.add_argument('--coords', '-c', default=None,
+                        help="Format: chrom:10..100 or chrom:10-100")
     parser.add_argument('--chrom', '-C', default=None)
     parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
     args = parser.parse_args()
