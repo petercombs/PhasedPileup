@@ -46,7 +46,7 @@ def get_snps(snpfile):
     pkl.dump(snps, open(snpfile+'.pkl', 'wb'))
     return snps
 
-read_height = 3
+read_height = 8
 x_scale = 1
 spacing = 5
 pos_color = 'blue'
@@ -95,7 +95,7 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
         read.qname,
         read.blocks,
         read.mpos if read.is_proper_pair else "",
-        "({})".format(last_read.blocks) 
+        "({})".format(last_read.blocks)
         if ((last_read is not None) and (last_read.qname == read.qname))
         else ""
         )
@@ -174,6 +174,12 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
     dwg.add(g)
 
 
+def find_transcript(annotation):
+    annot_dict = dict(entry.strip().split() for entry in
+                      annotation.strip(';"\'').split(';')
+                      if len(entry.strip().split()))
+    return annot_dict.get('transcript_id', '???')
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -208,10 +214,11 @@ def parse_args():
                 min_coord = min(min_coord, int(row[3]))
                 max_coord = max(max_coord, int(row[4]))
                 args.chrom = row[0]
-                exons.add((int(row[3]), int(row[4])))
+                curr_transcript = find_transcript(row[-1])
+                exons.add((int(row[3]), int(row[4]), curr_transcript ))
 
         if max_coord <= min_coord:
-            print('Could not find gene: {} '.format(args.gene_name))
+            raise ValueError('Could not find gene: {} '.format(args.gene_name))
             assert False
         args.draw_exons = exons
         args.coords = min_coord, max_coord
@@ -219,18 +226,30 @@ def parse_args():
 
 
 def draw_exons(dwg, exons, x_start, y_start):
-    for left, right in exons:
+    transcript_dict = {}
+    num_transcripts = 0
+    for left, right, id in exons:
+        if id not in transcript_dict:
+            transcript_dict[id] = num_transcripts
+            num_transcripts += 1
+        curr_transcript = transcript_dict[id]
+        print(id, left, right, curr_transcript)
+
         dwg.add(dwg.rect(
-            (x_scale * (left - x_start), y_start),
+            (x_scale * (left - x_start), y_start + read_height * curr_transcript),
             (x_scale * (right - left), read_height),
             style='opacity:1; fill: orange;',
                 ))
         g = dwg.g()
         g.attribs['class'] = 'hover_group'
-        g.add(dwg.line((x_scale * (left-x_start), 0), (x_scale * (left-x_start), y_start)))
-        g.add(dwg.line((x_scale * (right-x_start), 0), (x_scale * (right - x_start), y_start)))
+        g.add(dwg.line((x_scale * (left-x_start), 0),
+                       (x_scale * (left-x_start),
+                        y_start + read_height * curr_transcript)))
+        g.add(dwg.line((x_scale * (right-x_start), 0),
+                       (x_scale * (right - x_start),
+                        y_start + read_height * curr_transcript)))
         g.add(dwg.rect(
-            (x_scale * (left - x_start), y_start),
+            (x_scale * (left - x_start), y_start + read_height * curr_transcript),
             (x_scale * (right - left), read_height),
             style='opacity:1; fill: orange;',
             ))
@@ -310,10 +329,13 @@ if __name__ == "__main__":
 
     out_fname = args.samfile.replace('.bam', '_phased.svg')
     if args.gene_name:
-        out_fname = path.join(path.dirname(out_fname), 
+        out_fname = path.join(path.dirname(out_fname),
                 args.gene_name + '_' + path.basename(out_fname))
     start_coord -= 10
     end_coord += 10
+    if args.draw_exons:
+        start_coord = min(gene_coords[0] - 10, start_coord)
+        end_coord = max(gene_coords[1] + 10, end_coord)
     dwg = svg.Drawing(out_fname,
                       (x_scale*(end_coord - start_coord),
                        read_height * 1.2 * (max_depth_pos +
