@@ -233,7 +233,7 @@ def draw_exons(dwg, exons, x_start, y_start):
             transcript_dict[id] = num_transcripts
             num_transcripts += 1
         curr_transcript = transcript_dict[id]
-        print(id, left, right, curr_transcript)
+        #print(id, left, right, curr_transcript)
 
         dwg.add(dwg.rect(
             (x_scale * (left - x_start), y_start + read_height * curr_transcript),
@@ -281,6 +281,7 @@ if __name__ == "__main__":
                  and (gene_coords[0] <= read.reference_end <= gene_coords[1]))):
             continue
         phase = get_phase(read, snps[gene_chrom])
+        num_reads += 1
 
         # read.is_read1 = 1 if read_1, 0 if read_2
         if read.qname in unmatched_reads[read.is_read1]:
@@ -320,6 +321,7 @@ if __name__ == "__main__":
             insert_reads(read, None, reads_by_phase)
 
 
+    print("Matched ", num_reads)
 
 
     max_depth_pos = len(phase_pos)
@@ -358,7 +360,7 @@ if __name__ == "__main__":
     last_read = None
     for row_num, row in enumerate(phase_neg):
         if args.skip_if_deep and row_num == (max_rows+1):
-            print("bailing")
+            #print("bailing")
             continue
         for read in row:
             if read is None:
