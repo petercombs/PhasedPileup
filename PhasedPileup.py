@@ -113,7 +113,7 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
              (x_scale * (min(block_start+read_height/2, block_end) - x_start_coord), y_coord),
              (x_scale * (block_start - x_start_coord), y_coord+read_height/2)
             ],
-            class_='read_{}'.format(phase_color),
+            class_='read{}'.format(phase_color),
             id=read.qname,
         ))
     else:
@@ -128,7 +128,7 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
                 (x_scale * (block_start - x_start_coord), y_coord),
                 (x_scale * (block_start - x_start_coord), y_coord+read_height),
             ],
-            class_='read_{}'.format(phase_color),
+            class_='read{}'.format(phase_color),
         ))
         last_stop = block_start
 
@@ -138,14 +138,14 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
                           y_coord + 0.5 * read_height),
                          (x_scale*(block_start-x_start_coord),
                           y_coord + 0.5 * read_height),
-                       class_='bar_{}'.format(phase_color),
+                       class_='bar{}'.format(phase_color),
                          id=read.qname,
                         ))
         g.add(dwg.rect((x_scale*(block_start - x_start_coord),
                           y_coord),
                          (x_scale*(block_stop - block_start),
                           read_height),
-                       class_='read_{}'.format(phase_color),
+                       class_='read{}'.format(phase_color),
                          id=read.qname,
                         ))
         last_stop = block_stop
@@ -169,7 +169,7 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
                           y_coord + read_height/2),
                          (x_scale * (read.reference_start - x_start_coord),
                           y_coord + read_height/2),
-                       class_='bar_insert',
+                       class_='barinsert',
                         ))
     dwg.add(g)
 
@@ -346,13 +346,13 @@ if __name__ == "__main__":
                       )
     dwg.add(dwg.style(
         '.hover_group{opacity:0;} \n.hover_group:hover \n{\n\topacity:1;\n\tstroke-width:1!important;\n\tstroke:#000000;\n}'
-        '.bar_neg{stroke-width:1;stroke:red;}\n'
-        '.bar_pos{stroke-width:1;stroke:blue;}\n'
-        '.bar_unk{stroke-width:1;stroke:gray;}\n'
-        '.bar_insert{stroke-width:1;stroke:black;}\n'
-        '.read_neg{fill:red;}\n'
-        '.read_pos{fill:blue;}\n'
-        '.read_unk{fill:gray;}\n'
+        '.barneg{stroke-width:1;stroke:red;}\n'
+        '.barpos{stroke-width:1;stroke:blue;}\n'
+        '.barunk{stroke-width:1;stroke:gray;}\n'
+        '.barinsert{stroke-width:1;stroke:black;}\n'
+        '.readneg{fill:red;}\n'
+        '.readpos{fill:blue;}\n'
+        '.readunk{fill:gray;}\n'
         ))
 
     y_start = 10 + max_depth_neg * 1.2*read_height
