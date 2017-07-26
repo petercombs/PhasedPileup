@@ -154,14 +154,17 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
             alleles = snps[ref_pos + 1]
             if read.seq[read_pos] in alleles:
                 snp_color = [neg_color, pos_color][alleles.index(read.seq[read_pos])]
-                if snp_color == phase_color:
+                snp_phase = ['neg', 'pos'][alleles.index(read.seq[read_pos])]
+                if snp_phase == phase_color:
                     snp_color = 'black'
+                    snp_phase = 'agree'
             else:
+                snp_phase = 'unk'
                 snp_color = 'black'
             g.add(dwg.line(
                 (x_scale * (ref_pos - x_start_coord), y_coord),
                 (x_scale * (ref_pos - x_start_coord), y_coord + read_height),
-                style='stroke-width:1; stroke:{};'.format(snp_color),
+                class_='snp snp{}'.format(snp_phase),
             ))
 
     if last_read is not None and read.qname == last_read.qname:
@@ -345,15 +348,23 @@ if __name__ == "__main__":
                       profile='full',
                       )
     dwg.add(dwg.style(
-        '.hover_group{opacity:0;} \n.hover_group:hover \n{\n\topacity:1;\n\tstroke-width:1!important;\n\tstroke:#000000;\n}'
-        '.barneg{stroke-width:1;stroke:red;}\n'
-        '.barpos{stroke-width:1;stroke:blue;}\n'
-        '.barunk{stroke-width:1;stroke:gray;}\n'
-        '.barinsert{stroke-width:1;stroke:black;}\n'
-        '.readneg{fill:red;}\n'
-        '.readpos{fill:blue;}\n'
-        '.readunk{fill:gray;}\n'
-        ))
+        (
+            '.hover_group{{opacity:0;}} \n'
+            '.hover_group:hover \n{{\n\topacity:1;\n\tstroke-width:1!important;\n\tstroke:#000000;\n}}'
+            '.barneg{{stroke-width:1;stroke:{neg};}}\n'
+            '.barpos{{stroke-width:1;stroke:{pos};}}\n'
+            '.barunk{{stroke-width:1;stroke:{unk};}}\n'
+            '.barinsert{{stroke-width:1;stroke:black;}}\n'
+            '.readneg{{fill:{neg};}}\n'
+            '.readpos{{fill:{pos};}}\n'
+            '.readunk{{fill:{unk};}}\n'
+            '.snpagree{{stroke:black}}\n'
+            '.snpneg{{stroke:{neg};}}\n'
+            '.snppos{{stroke:{pos};}}\n'
+            '.snpunk{{stroke:white}}\n'
+            '.snp{{stroke-width:1}}\n'
+        ).format(**{'pos': pos_color, 'neg': neg_color, 'unk': unk_color})
+    ))
 
     y_start = 10 + max_depth_neg * 1.2*read_height
 
