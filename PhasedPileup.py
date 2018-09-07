@@ -346,8 +346,9 @@ if __name__ == "__main__":
     dwg = svg.Drawing(out_fname,
                       (x_scale*(end_coord - start_coord),
                        read_height * 1.2 * (max_depth_pos +
-                                             max_depth_neg +
-                                             max_depth_unk +  15)),
+                                            max_depth_neg +
+                                            len(args.draw_exons) +
+                                            max_depth_unk +  15)),
                       profile='full',
                       )
     dwg.add(dwg.style(
