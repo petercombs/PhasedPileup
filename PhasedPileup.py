@@ -104,16 +104,22 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
     if with_snps_only and len(snp_locs) == 0:
         return
     g = dwg.g()
-    g.add(svg.base.Title("{}: {} - {} - {}".format(
-        read.qname,
-        read.blocks,
-        read.mpos if read.is_proper_pair else "",
-        "({})".format(last_read.blocks)
-        if ((last_read is not None) and (last_read.qname == read.qname))
-        else ""
-        )
-        )
-        )
+    g.add(svg.base.Title(("<tspan>QName {}: </tspan>"
+                         " <tspan> IsRead1: {}</tspan>"
+                          "<tspan>Blocks :{} </tspan>"
+                          "<tspan>MPos: {} </tspan>"
+                          "<tspan>:LastBlocks {}</tspan>"
+                         ).format(
+                             read.qname,
+                             read.is_read1,
+                             read.blocks,
+                             read.mpos if read.is_proper_pair else "",
+                             ("({})".format(last_read.blocks)
+                              if ((last_read is not None) and (last_read.qname == read.qname))
+                              else "")
+                         )
+                        )
+         )
     if read.is_reverse:
         slice_start += 1
         block_start, block_end = blocks[0]
@@ -187,6 +193,22 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
                           y_coord + read_height/2),
                        class_='barinsert',
                         ))
+    if read.is_read1:
+        if read.is_reverse:
+            read_start = blocks[-1][1]
+            read_start_offset = read_start - 5
+        else:
+            read_start = blocks[0][0]
+            read_start_offset = read_start + 5
+        g.add(dwg.polygon(
+            [
+                (x_scale * (read_start - x_start_coord), y_coord + read_height),
+                (x_scale * (read_start_offset - x_start_coord), y_coord+read_height/2),
+                (x_scale * (read_start - x_start_coord), y_coord),
+                (x_scale * (read_start - x_start_coord), y_coord+read_height),
+            ],
+            class_='r1_flag',
+        ))
     dwg.add(g)
 
 
@@ -396,6 +418,7 @@ if __name__ == "__main__":
             '.snppos{{stroke:{pos};}}\n'
             '.snpunk{{stroke:white}}\n'
             '.snp{{stroke-width:1}}\n'
+            '.r1flag{{fill:black;}}\n'
         ).format(**{'pos': pos_color, 'neg': neg_color, 'unk': unk_color})
     ))
 
