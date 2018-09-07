@@ -42,8 +42,21 @@ def get_snps(snpfile):
             chrom, _, start, refalt = line.strip().split()
             if true_hets.get((chrom, start), True):
                 snps[chrom][int(start)] = refalt.split('|')
+    else:
+        raise NotImplementedError("We can't yet handle other SNP filetypes")
 
     pkl.dump(snps, open(snpfile+'.pkl', 'wb'))
+    return snps
+
+def get_snps_low_mem(snpfile, target_chrom, low, high):
+    snps = defaultdict(dict)
+    for line in open(snpfile):
+        chrom, _, start, refalt = line.strip().split()
+        if chrom  != target_chrom:
+            continue
+        start = int(start)
+        if low <= start <= high:
+            snps[chrom][start] = refalt.split('|')
     return snps
 
 read_height = 8
@@ -194,6 +207,7 @@ def parse_args():
                         help="Format: chrom:10..100 or chrom:10-100")
     parser.add_argument('--chrom', '-C', default=None)
     parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
+    parser.add_argument('--low-mem', default=False, action='store_true')
     parser.add_argument('--skip-if-deep', '-d', default=False,
                         action='store_true')
     parser.add_argument('--draw-all-snps', '-S', default=False,
@@ -269,7 +283,10 @@ if __name__ == "__main__":
 
     # Note that phases are 0, 1, and -1
     phase_all = [phase_unk, phase_pos, phase_neg]
-    snps = get_snps(args.snp_file)
+    if args.low_mem:
+        snps = get_snps_low_mem(args.snp_file, args.chrom, *args.coords)
+    else:
+        snps = get_snps(args.snp_file)
 
     start_coord = 1e99
     end_coord = 0
