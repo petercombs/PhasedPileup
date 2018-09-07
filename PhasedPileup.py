@@ -196,6 +196,8 @@ def parse_args():
     parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
     parser.add_argument('--skip-if-deep', '-d', default=False,
                         action='store_true')
+    parser.add_argument('--draw-all-snps', '-S', default=False,
+                        action='store_true')
     args = parser.parse_args()
 
     if args.coords is not None:
@@ -255,6 +257,7 @@ def draw_exons(dwg, exons, x_start, y_start):
             (x_scale * (right - left), read_height),
             style='opacity:1; fill: orange;',
             ))
+        y_start += read_height
         dwg.add(g)
 
 
@@ -410,6 +413,19 @@ if __name__ == "__main__":
                      )
             last_read = read
     y_start += max_depth_pos * 1.2 * read_height + 3 * read_height
+
+    if args.draw_all_snps:
+        g = dwg.g()
+        for snp in snps[gene_chrom]:
+            if snp < start_coord or snp > end_coord: continue
+            g.add(dwg.line(
+                (x_scale * (snp - start_coord), 10 ),
+                (x_scale * (snp - start_coord), y_start),
+                class_='snp snp{}'.format('agree'),
+            ))
+        dwg.add(g)
+
+
 
     if args.draw_exons:
         draw_exons(dwg, args.draw_exons, start_coord, y_start)
