@@ -190,17 +190,17 @@ def draw_read(read, dwg, x_start_coord, y_coord, phase_color, snps=None,
     dwg.add(g)
 
 
-def find_transcript(annotation):
-    annot_dict = dict(entry.strip().split() for entry in
-                      annotation.strip(';"\'').split(';')
-                      if len(entry.strip().split()))
+def find_transcript(annotation, splitkey=' '):
+    annot_dict = dict(entry.strip().split(splitkey)
+            for entry in annotation.strip(';"\'').split(';')
+            if len(entry.strip().split()))
     return annot_dict.get('transcript_id', '???')
 
 
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('snp_file')
-    parser.add_argument('samfile')
+    parser.add_argument('samfile', nargs='+')
     parser.add_argument('--gene-name', '-g', default=None)
     parser.add_argument('--gtf-file', '-G', default=None)
     parser.add_argument('--coords', '-c', default=None,
@@ -212,6 +212,7 @@ def parse_args():
                         action='store_true')
     parser.add_argument('--draw-all-snps', '-S', default=False,
                         action='store_true')
+    parser.add_argument('--outdir', '-o', default='')
     args = parser.parse_args()
 
     if args.coords is not None:
@@ -229,11 +230,13 @@ def parse_args():
         exons = set()
         for row in open(args.gtf_file):
             row = row.split('\t')
-            if '"{}"'.format(args.gene_name) in row[-1]:
+            if (('"{}"'.format(args.gene_name) in row[-1])
+                    or ('={};'.format(args.gene_name) in row[-1])):
                 min_coord = min(min_coord, int(row[3]))
                 max_coord = max(max_coord, int(row[4]))
                 args.chrom = row[0]
-                curr_transcript = find_transcript(row[-1])
+                curr_transcript = find_transcript(row[-1], '=' if
+                        args.gtf_file.endswith('.gff') else ' ')
                 exons.add((int(row[3]), int(row[4]), curr_transcript ))
 
         if max_coord <= min_coord:
@@ -297,43 +300,52 @@ if __name__ == "__main__":
     gene_chrom = args.chrom
     gene_coords = args.coords
     num_reads = 0
-    for read in (Samfile(args.samfile).fetch(gene_chrom,
-                                             gene_coords[0],
-                                             gene_coords[1])):
-        if (not ((gene_coords[0] <= read.reference_start <= gene_coords[1])
-                 and (gene_coords[0] <= read.reference_end <= gene_coords[1]))):
-            continue
-        phase = get_phase(read, snps[gene_chrom])
-        num_reads += 1
-
-        # read.is_read1 = 1 if read_1, 0 if read_2
-        if read.qname in unmatched_reads[read.is_read1]:
-            other_read, other_phase = unmatched_reads[read.is_read1].pop(read.qname)
-
-            if phase is None and other_phase is None:
-                continue
-            elif other_phase is None:
-                pass
-            elif phase is None:
-                phase = other_phase
-            elif phase != other_phase:
-                phase = 0
+    r1_lr = [0, 0]
+    for fname in args.samfile:
+        for read in (Samfile(fname).fetch(gene_chrom,
+                                                 gene_coords[0],
+                                                 gene_coords[1])):
+            #if (not ((gene_coords[0] <= read.reference_start <= gene_coords[1])
+                     #and (gene_coords[0] <= read.reference_end <= gene_coords[1]))):
+                #continue
+            for _, pos in read.get_aligned_pairs(matches_only=True):
+                if gene_coords[0] <= pos <= gene_coords[1]: break
             else:
-                pass
+                continue
+            phase = get_phase(read, snps[gene_chrom])
+            num_reads += 1
 
-            reads_by_phase = phase_all[phase]
-            insert_reads(read, other_read, reads_by_phase)
-        else:
-            unmatched_reads[read.is_read2][read.qname] = (
-                read, phase
-            )
+            if read.is_read1:
+                r1_lr[read.is_reverse] += 1
+
+            # read.is_read1 = 1 if read_1, 0 if read_2
+            if read.qname in unmatched_reads[read.is_read1]:
+                other_read, other_phase = unmatched_reads[read.is_read1].pop(read.qname)
+
+                if phase is None and other_phase is None:
+                    phase = 0
+                elif other_phase is None:
+                    pass
+                elif phase is None:
+                    phase = other_phase
+                elif phase != other_phase:
+                    phase = 0
+                else:
+                    pass
+
+                reads_by_phase = phase_all[phase]
+                insert_reads(read, other_read, reads_by_phase)
+            else:
+                unmatched_reads[read.is_read2][read.qname] = (
+                    read, phase
+                )
 
 
-        if phase is None:
-            continue
+            if phase is None:
+                continue
 
-        start_coord = min(start_coord, read.reference_start)
-        end_coord = max(end_coord, read.reference_end)
+            start_coord = min(start_coord, read.reference_start)
+            end_coord = max(end_coord, read.reference_end)
 
     for reads in unmatched_reads:
         for qname in reads:
@@ -351,9 +363,9 @@ if __name__ == "__main__":
     max_depth_neg = len(phase_neg)
     max_depth_unk = len(phase_unk)
 
-    out_fname = args.samfile.replace('.bam', '_phased.svg')
+    out_fname = args.samfile[0].replace('.bam', '_phased.svg')
     if args.gene_name:
-        out_fname = path.join(path.dirname(out_fname),
+        out_fname = path.join(path.dirname(args.outdir or out_fname),
                 args.gene_name + '_' + path.basename(out_fname))
     start_coord -= 10
     end_coord += 10
