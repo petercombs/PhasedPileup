@@ -1,5 +1,8 @@
 # PhasedPileup
 Make a display with reads from a BAM file phased to the correct parent genome
+## Example
+
+![Example output](doc/General.png)
 
 ## Requirements and Usage
 
@@ -34,7 +37,13 @@ haven't considered what might happen if they were in there.
 Red reads are the reference allele, and blue reads are the alternate allele.
 Gray reads are reads that cannot be unambiguously phased, either due to not
 overlapping a SNP, or having SNPs with conflicting or unknown phase.
+
+![Ref/Alt Example](doc/RefAlt.png)
+
 Additionally, read1 is marked with a black flag at the start of the read.
+
+![Read 1 is marked with a flag](doc/Read1Flag.png)
+
 
 Reads that span an intron (or, more generally, with a gap relative to the
 reference sequence) are shown with a horizontal line in the phase color that
