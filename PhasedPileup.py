@@ -229,7 +229,8 @@ def parse_args():
                         help="Format: chrom:10..100 or chrom:10-100")
     parser.add_argument('--chrom', '-C', default=None)
     parser.add_argument('--draw-exons', '-x', default=False, action='store_true')
-    parser.add_argument('--low-mem', default=False, action='store_true')
+    parser.add_argument('--low-mem', default=True, action='store_true')
+    parser.add_argument('--no-low-mem', dest='low_mem', action='store_false')
     parser.add_argument('--skip-if-deep', '-d', default=False,
                         action='store_true')
     parser.add_argument('--draw-all-snps', '-S', default=False,
