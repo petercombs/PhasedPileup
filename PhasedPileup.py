@@ -325,9 +325,15 @@ if __name__ == "__main__":
     num_reads = 0
     r1_lr = [0, 0]
     for fname in args.samfile:
-        for read in (Samfile(fname).fetch(gene_chrom,
-                                                 gene_coords[0],
-                                                 gene_coords[1])):
+        samfile = Samfile(fname)
+        try:
+            iterator = samfile.fetch(gene_chrom, gene_coords[0], gene_coords[1])
+        except ValueError:
+            # Thrown when there's not an index
+            references = samfile.references
+            iterator = (read for read in samfile if references[read.reference_id] ==
+                    gene_chrom)
+        for read in iterator:
             #if (not ((gene_coords[0] <= read.reference_start <= gene_coords[1])
                      #and (gene_coords[0] <= read.reference_end <= gene_coords[1]))):
                 #continue
