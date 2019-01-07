@@ -374,7 +374,7 @@ if __name__ == "__main__":
         for qname in reads:
             read, phase = reads[qname]
             if phase is None:
-                continue
+                phase = 0
             reads_by_phase = phase_all[phase]
             insert_reads(read, None, reads_by_phase)
 
